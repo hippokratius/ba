@@ -584,7 +584,18 @@ if __name__ == '__main__':
     print(cloud_ply.points.get(clean_header))
     print(cloud_upscaled.points.get(clean_header))
 
-
+    references = {
+        8495: (137, 96, 87),        # Rosa link neben Mitte
+        7725: (141, 149, 149),      # Weiße hervorhebung links neben 8495
+        7179: (137, 145, 148),      # obere Säulenende Querbalken weiß (mitte)
+        7739: (98, 72, 77),         # Linke Ecksäule rosa
+        8096: (140, 141, 135),      # grüne Fensterfläche
+        8473: (139, 115, 110),      # recht Ecke rosa direkt neben weißer Vorfläche
+        7699: (217, 220, 235),      # Durchgang 8495, rechte Wand
+        8468: (141, 153, 164),      # Linker Säulenfuß, front
+        8524: (151, 111, 105),      # Links neben 8495
+        8527: (160, 125, 124),      # Links neben 8524
+    }
     # ein RGB Cluster
     # 8495 ist erste große rosa Fläche links neben der Mitte des Rathauses
     vertexlist = matching[8495]
@@ -625,12 +636,16 @@ if __name__ == '__main__':
         init='k-means++',
         random_state=0,
         n_init='auto'
-    ).fit(lab_colors)
+    ).fit(colors)
     cluster_centers = kmeans.cluster_centers_
     labels = kmeans.labels_
     counts = np.bincount(labels)
     print(labels)
     print(list(counts))
+    iterationen = kmeans.n_iter_
+    features = kmeans.n_features_in_
+    distance = kmeans.inertia_
+    print(f'{iterationen} Iterationen, {features} Eingabewerte gesichtet, {distance}')
     #print(cluster_centers)
 
 
