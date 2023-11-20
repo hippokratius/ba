@@ -191,13 +191,13 @@ def calc_colors_with_hsl_average(matching: dict,
     for polygon, vertexlist in matching.items():
         h_values, s_values, v_values = [], [], []
         for v in vertexlist:
-            rgb = sRGBColor(
+            srgb = sRGBColor(
                 rgb_r=cloud.points['red'].loc[v],
                 rgb_g=cloud.points['green'].loc[v],
                 rgb_b=cloud.points['blue'].loc[v],
                 is_upscaled=is_upscaled
             )
-            hsv: HSVColor = convert_color(rgb, HSVColor)
+            hsv: HSVColor = convert_color(srgb, HSVColor)
             h_values.append(hsv.hsv_h)
             s_values.append(hsv.hsv_s)
             v_values.append(hsv.hsv_v)
@@ -206,8 +206,11 @@ def calc_colors_with_hsl_average(matching: dict,
             hsv_s=sum(s_values) / len(s_values),
             hsv_v=sum(v_values) / len(v_values)
         )
-        rgb: sRGBColor = convert_color(hsv, sRGBColor)
-        color_matching[polygon] = (rgb.rgb_r, rgb.rgb_g, rgb.rgb_b)
+        srgb: sRGBColor = convert_color(hsv, sRGBColor)
+        if is_upscaled:
+            color_matching[polygon] = srgb.get_upscaled_value_tuple()
+        else:
+            color_matching[polygon] = srgb.get_value_tuple()
     return color_matching
 
 
@@ -295,7 +298,10 @@ def setObjectColorsWithBoxPlotHSV(matching: dict,
             v = sum(v_values) / length
         hsv = HSVColor(hsv_h=h, hsv_s=s, hsv_v=v)
         srgb: sRGBColor = convert_color(hsv, sRGBColor)
-        color_matching[polygon] = (srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
+        if is_upscaled:
+            color_matching[polygon] = srgb.get_upscaled_value_tuple()
+        else:
+            color_matching[polygon] = srgb.get_value_tuple()
     return color_matching
 
 
@@ -367,12 +373,15 @@ def calc_colors_with_Median_HSV(matching: dict,
                 math.ceil(length / 2)]) / 2
         hsv = HSVColor(hsv_h=h_median, hsv_s=s_median, hsv_v=v_median)
         srgb: sRGBColor = convert_color(hsv, sRGBColor)
-        color_matching[polygon] = (srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
+        if is_upscaled:
+            color_matching[polygon] = srgb.get_upscaled_value_tuple()
+        else:
+            color_matching[polygon] = srgb.get_value_tuple()
     return color_matching
 
 def calc_colors_with_kmeans_rgb(matching: dict,
                                 cloud: PyntCloud,
-                                k: int = 7,
+                                k: int = 8,
                                 random_state: int = None):
     """
     Bestimmt Flächenfarben durch eine k-means Clusterbildung. Die Flächenfarbe
@@ -386,24 +395,25 @@ def calc_colors_with_kmeans_rgb(matching: dict,
     color_matching = {}
     for polygon, vertexlist in matching.items():
         colors = cloud.points.get(['red', 'green', 'blue']).loc[vertexlist].values
-        kmeans = KMeans(
-            n_clusters=k,
-            init='k-means++',
-            random_state=random_state,
-            n_init='auto'
-        ).fit(colors)
-        centroids = list(kmeans.cluster_centers_)
-        labels = kmeans.labels_
-        counts = list(np.bincount(labels))
-        max_index = counts.index(max(counts))
-        maximum = centroids[max_index]
-        color_matching[polygon] = (maximum[0], maximum[1], maximum[2])
+        if len(colors) >= 5*k:
+            kmeans = KMeans(
+                n_clusters=k,
+                init='k-means++',
+                random_state=random_state,
+                n_init='auto'
+            ).fit(colors)
+            centroids = list(kmeans.cluster_centers_)
+            labels = kmeans.labels_
+            counts = list(np.bincount(labels))
+            max_index = counts.index(max(counts))
+            maximum = centroids[max_index]
+            color_matching[polygon] = (maximum[0], maximum[1], maximum[2])
     return color_matching
 
 
 def calc_colors_with_kmeans_hsv(matching: dict,
                                 cloud: PyntCloud,
-                                k: int = 7,
+                                k: int = 8,
                                 random_state: int = None,
                                 is_upscaled: bool = False):
     """
@@ -419,34 +429,38 @@ def calc_colors_with_kmeans_hsv(matching: dict,
     color_matching = {}
     for polygon, vertexlist in matching.items():
         colors = cloud.points.get(['red', 'green', 'blue']).loc[vertexlist].values
-        hsv_colors = []
-        for color in colors:
-            srgb = sRGBColor(
-                rgb_r=color[0],
-                rgb_g=color[1],
-                rgb_b=color[2],
-                is_upscaled=is_upscaled
+        if len(colors) >= 5*k:
+            hsv_colors = []
+            for color in colors:
+                srgb = sRGBColor(
+                    rgb_r=color[0],
+                    rgb_g=color[1],
+                    rgb_b=color[2],
+                    is_upscaled=is_upscaled
+                )
+                hsv: HSVColor = convert_color(srgb, HSVColor)
+                hsv_colors.append([hsv.hsv_h, hsv.hsv_s, hsv.hsv_v])
+            kmeans = KMeans(
+                n_clusters=k,
+                init='k-means++',
+                random_state=random_state,
+                n_init='auto'
+            ).fit(hsv_colors)
+            centroids = list(kmeans.cluster_centers_)
+            labels = kmeans.labels_
+            counts = list(np.bincount(labels))
+            max_index = counts.index(max(counts))
+            maximum = centroids[max_index]
+            hsv = HSVColor(
+                hsv_h=maximum[0],
+                hsv_s=maximum[1],
+                hsv_v=maximum[2]
             )
-            hsv: HSVColor = convert_color(srgb, HSVColor)
-            hsv_colors.append([hsv.hsv_h, hsv.hsv_s, hsv.hsv_v])
-        kmeans = KMeans(
-            n_clusters=k,
-            init='k-means++',
-            random_state=random_state,
-            n_init='auto'
-        ).fit(hsv_colors)
-        centroids = list(kmeans.cluster_centers_)
-        labels = kmeans.labels_
-        counts = list(np.bincount(labels))
-        max_index = counts.index(max(counts))
-        maximum = centroids[max_index]
-        hsv = HSVColor(
-            hsv_h=maximum[0],
-            hsv_s=maximum[1],
-            hsv_v=maximum[2]
-        )
-        srgb: sRGBColor = convert_color(hsv, sRGBColor)
-        color_matching[polygon] = (srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
+            srgb: sRGBColor = convert_color(hsv, sRGBColor)
+            if is_upscaled:
+                color_matching[polygon] = srgb.get_upscaled_value_tuple()
+            else:
+                color_matching[polygon] = srgb.get_value_tuple()
     return color_matching
 
 
@@ -478,7 +492,10 @@ def validate_colors(color1: tuple, color2: tuple, is_upscaled: bool = False):
     )
     lab1: LabColor = convert_color(srgb1, LabColor)
     lab2: LabColor = convert_color(srgb2, LabColor)
-    delta_e = delta_e_cie1976(color1=lab1, color2=lab2)
+    delta_l = (lab1.lab_l - lab2.lab_l)
+    delta_a = (lab1.lab_a - lab2.lab_a)
+    delta_b = (lab1.lab_b - lab2.lab_b)
+    delta_e = math.sqrt((delta_l ** 2) + (delta_a ** 2) + (delta_b ** 2))
     return delta_e
 
 
@@ -569,7 +586,7 @@ if __name__ == '__main__':
         7179: (137, 145, 148),  # obere Säulenende Querbalken weiß (mitte)
         7739: (98, 72, 77),     # Linke Ecksäule rosa
         8096: (140, 141, 135),  # grüne Fensterfläche
-        8473: (139, 115, 110),  # recht rosa Ecke direkt neben weißer Vorfläche
+        6948: (112, 92, 73),    # alte Fassade
         7699: (217, 220, 235),  # Durchgang 8495, rechte Wand
         8468: (141, 153, 164),  # Linker Säulenfuß, front
         8524: (151, 111, 105),  # Links neben 8495
@@ -630,8 +647,31 @@ if __name__ == '__main__':
     print(cloud_ply.points.get(clean_header))
     print(cloud_upscaled.points.get(clean_header))
 
+    color_matching = calc_colors_with_kmeans_hsv(
+        matching=matching,
+        cloud=cloud_upscaled,
+        k=7,
+        random_state=1,
+        is_upscaled=True
+    )
+    for polygon, color in references.items():
+        (r, g, b) = color_matching[polygon]
+        calc_col = (r, g, b)
+        delta_e = validate_colors(
+            color1=(r, g, b),
+            color2=color,
+            is_upscaled=True)
+        print(f'Delta E für Fläche {polygon} beträgt {delta_e}')
+        print(f'Referenzwert: {color}, Clustercentrum: {calc_col}')
+        srgb = sRGBColor(r, g, b, True)
+        print(srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
+
+
+
+
     # ein RGB Cluster
     # 8495 ist erste große rosa Fläche links neben der Mitte des Rathauses
+    """
     vertexlist = matching[8495]
     colors = cloud_upscaled.points.get(rgb_header).loc[vertexlist].values
     anz_pkt = len(colors)
@@ -704,6 +744,7 @@ if __name__ == '__main__':
         )
         srgb: sRGBColor = convert_color(lab, sRGBColor)
         print(srgb.get_upscaled_value_tuple())
+    """
 
     # Color Matching mit Durchschnitt
     """
