@@ -1,3 +1,6 @@
 *.png
 *.blend
 *.blend1
+*.pkl
+*.las
+*.ply
