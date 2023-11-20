@@ -7,8 +7,9 @@ import numpy as np
 import pandas as pd
 
 from pyntcloud import PyntCloud
-from colormath.color_objects import LabColor, sRGBColor, HSLColor, HSVColor
+from colormath.color_objects import LabColor, sRGBColor, HSVColor
 from colormath.color_conversions import convert_color
+from colormath.color_diff import delta_e_cie1976
 from sklearn.cluster import KMeans
 
 # ------------------------------------------------------------------------------
@@ -412,7 +413,7 @@ def calc_colors_with_kmeans_hsv(matching: dict,
     :param cloud: Punktwolke als PyntCloud
     :param k: Anzahl der zu bildenden Cluster
     :param random_state: int, um Ergebnisse reproduzierbar zu machen.
-    :param is_upscaled:  bool, sRGB Werte der Punktwolke als 8-bit int?
+    :param is_upscaled: bool, sRGB Werte der Punktwolke als 8-bit int?
     :return: color matching mit Flächen als Keys und (r, g, b)-Tuple als Values
     """
     color_matching = {}
@@ -447,6 +448,39 @@ def calc_colors_with_kmeans_hsv(matching: dict,
         srgb: sRGBColor = convert_color(hsv, sRGBColor)
         color_matching[polygon] = (srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
     return color_matching
+
+
+# ------------------------------------------------------------------------------
+# Funktionen zum kontrollieren der Farbwerte
+# ------------------------------------------------------------------------------
+
+def validate_colors(color1: tuple, color2: tuple, is_upscaled: bool = False):
+    """
+    Berechnet Delta E (76) für zwei sRGB Farben.
+    :param color1: Farbe 1 als (r, g, b)-Tuple
+    :param color2: Farbe 2 als (r, g, b)-Tuple
+    :param is_upscaled: bool, sRGB Werte der Punktwolke als 8-bit int?
+    :return: delta_e
+    """
+    (r1, g1, b1) = color1
+    (r2, g2, b2) = color2
+    srgb1 = sRGBColor(
+        rgb_r=r1,
+        rgb_g=g1,
+        rgb_b=b1,
+        is_upscaled=is_upscaled
+    )
+    srgb2 = sRGBColor(
+        rgb_r=r2,
+        rgb_g=g2,
+        rgb_b=b2,
+        is_upscaled=is_upscaled
+    )
+    lab1: LabColor = convert_color(srgb1, LabColor)
+    lab2: LabColor = convert_color(srgb2, LabColor)
+    delta_e = delta_e_cie1976(color1=lab1, color2=lab2)
+    return delta_e
+
 
 # ------------------------------------------------------------------------------
 # Funktionen zur Erstellung von Histogrammen
@@ -529,6 +563,18 @@ if __name__ == '__main__':
     rgba_header = ['red', 'green', 'blue', 'alpha']
     rgb_header = ['red', 'green', 'blue']
     clean_header = ['x', 'y', 'z', 'red', 'green', 'blue']
+    references = {
+        8495: (137, 96, 87),    # Rosa link neben Mitte
+        7725: (141, 149, 149),  # Weiße hervorhebung links neben 8495
+        7179: (137, 145, 148),  # obere Säulenende Querbalken weiß (mitte)
+        7739: (98, 72, 77),     # Linke Ecksäule rosa
+        8096: (140, 141, 135),  # grüne Fensterfläche
+        8473: (139, 115, 110),  # recht rosa Ecke direkt neben weißer Vorfläche
+        7699: (217, 220, 235),  # Durchgang 8495, rechte Wand
+        8468: (141, 153, 164),  # Linker Säulenfuß, front
+        8524: (151, 111, 105),  # Links neben 8495
+        8527: (160, 125, 124),  # Links neben 8524
+    }
 
     # --------------------------------------------------------------------------
     # Daten importieren
@@ -584,18 +630,6 @@ if __name__ == '__main__':
     print(cloud_ply.points.get(clean_header))
     print(cloud_upscaled.points.get(clean_header))
 
-    references = {
-        8495: (137, 96, 87),        # Rosa link neben Mitte
-        7725: (141, 149, 149),      # Weiße hervorhebung links neben 8495
-        7179: (137, 145, 148),      # obere Säulenende Querbalken weiß (mitte)
-        7739: (98, 72, 77),         # Linke Ecksäule rosa
-        8096: (140, 141, 135),      # grüne Fensterfläche
-        8473: (139, 115, 110),      # recht Ecke rosa direkt neben weißer Vorfläche
-        7699: (217, 220, 235),      # Durchgang 8495, rechte Wand
-        8468: (141, 153, 164),      # Linker Säulenfuß, front
-        8524: (151, 111, 105),      # Links neben 8495
-        8527: (160, 125, 124),      # Links neben 8524
-    }
     # ein RGB Cluster
     # 8495 ist erste große rosa Fläche links neben der Mitte des Rathauses
     vertexlist = matching[8495]
