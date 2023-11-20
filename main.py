@@ -176,7 +176,7 @@ def calc_colors_with_rgb_average(matching: dict, cloud: PyntCloud):
     return color_matching
 
 
-def calc_colors_with_hsl_average(matching: dict,
+def calc_colors_with_hsv_average(matching: dict,
                                  cloud: PyntCloud,
                                  is_upscaled: bool=False):
     """
@@ -214,7 +214,7 @@ def calc_colors_with_hsl_average(matching: dict,
     return color_matching
 
 
-def setObjectColorsWithBoxPlot(matching: dict, cloud: PyntCloud):
+def calc_colors_with_boxplot_rgb(matching: dict, cloud: PyntCloud):
     """
     Berechnung von Farbwerten pro Fläche durch den Durchschnitt des
     Interquartilsabstand.
@@ -252,7 +252,7 @@ def setObjectColorsWithBoxPlot(matching: dict, cloud: PyntCloud):
     return color_matching
 
 
-def setObjectColorsWithBoxPlotHSV(matching: dict,
+def calc_colors_with_boxplot_hsv(matching: dict,
                                   cloud: PyntCloud,
                                   is_upscaled: bool=False):
     """
@@ -617,8 +617,8 @@ if __name__ == '__main__':
 
     # Punktwolke aus PLY Datei importieren
     """
-    cloud = import_pointcloud(
-        file='ply/rathaus_float_colors.ply'
+    cloud_upscaled = import_pointcloud(
+        file='ply/rathaus_upscaled_colors.ply'
     )
     """
 
@@ -642,11 +642,46 @@ if __name__ == '__main__':
     # --------------------------------------------------------------------------
 
     # Ausgabe der Punktwolken zur Überprüfung, ob alle da sind ;)
-    print(cloud_las.points.get(clean_header))
-    print(cloud.points.get(clean_header))
-    print(cloud_ply.points.get(clean_header))
-    print(cloud_upscaled.points.get(clean_header))
+    #print(cloud_las.points.get(clean_header))
+    #print(cloud.points.get(clean_header))
+    #print(cloud_ply.points.get(clean_header))
+    #print(cloud_upscaled.points.get(clean_header))
 
+
+
+    # Color Matching mit Durchschnitt RGB
+    """
+    color_matching = calc_colors_with_rgb_average(
+        matching=matching,
+        cloud=cloud_upscaled
+    )
+    """
+
+    # Color Matching mit Durchschnitt HSV
+    """
+    color_matching = calc_colors_with_hsv_average(
+        matching=matching,
+        cloud=cloud_upscaled,
+        is_upscaled=True
+    )
+    """
+
+    # Color Matching mit BoxPlot RGB
+    color_matching = ca
+
+
+    # Color Matching mit RGB kmeans berechnen
+    """
+    color_matching = calc_colors_with_kmeans_rgb(
+        matching=matching,
+        cloud=cloud_upscaled,
+        k=7,
+        random_state=1,
+    )
+    """
+
+    # Color Matching mit HSV kmeans berechnen
+    """
     color_matching = calc_colors_with_kmeans_hsv(
         matching=matching,
         cloud=cloud_upscaled,
@@ -654,6 +689,11 @@ if __name__ == '__main__':
         random_state=1,
         is_upscaled=True
     )
+    """
+
+    # Berechnung und Ausgabe der Farbdifferenz für die Referenzflächen für eine
+    # Auswertung
+    print('FlächenID: Referenzfarbe; Farbdifferenz Delta E; Berechnete Farbe ')
     for polygon, color in references.items():
         (r, g, b) = color_matching[polygon]
         calc_col = (r, g, b)
@@ -661,90 +701,11 @@ if __name__ == '__main__':
             color1=(r, g, b),
             color2=color,
             is_upscaled=True)
-        print(f'Delta E für Fläche {polygon} beträgt {delta_e}')
-        print(f'Referenzwert: {color}, Clustercentrum: {calc_col}')
+        print(f'{polygon}: {color}; {delta_e}; {calc_col}')
         srgb = sRGBColor(r, g, b, True)
         print(srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
+        print('   ')
 
-
-
-
-    # ein RGB Cluster
-    # 8495 ist erste große rosa Fläche links neben der Mitte des Rathauses
-    """
-    vertexlist = matching[8495]
-    colors = cloud_upscaled.points.get(rgb_header).loc[vertexlist].values
-    anz_pkt = len(colors)
-    helle_rot_toene = []
-    for element in colors:
-        if element[0] > 100 and element[0] > element[1] and element[0] > element[2]:
-            helle_rot_toene.append(element)
-    anz_rosa = len(helle_rot_toene)
-    print(helle_rot_toene)
-    print(f'Anzahl aller Punkte zur Fläche: {anz_pkt}')
-    print(f'Anzahl heller Rot Töne: {anz_rosa}')
-    hsv_colors = []
-    lab_colors = []
-    for element in colors:
-        srgb = sRGBColor(
-            rgb_r=element[0],
-            rgb_g=element[1],
-            rgb_b=element[2],
-            is_upscaled=True
-        )
-        hsv: HSVColor = convert_color(srgb, HSVColor)
-        hsv_colors.append([hsv.hsv_h, hsv.hsv_s * 1.2, hsv.hsv_v * 1])
-        hsv: HSVColor = HSVColor(
-            hsv_h=hsv_colors[len(hsv_colors)-1][0],
-            hsv_s=hsv_colors[len(hsv_colors)-1][1],
-            hsv_v=hsv_colors[len(hsv_colors)-1][2]
-        )
-        lab: LabColor = convert_color(hsv, LabColor)
-        lab_colors.append([lab.lab_l, lab.lab_a, lab.lab_b])
-
-
-    #print(hsv_colors)
-
-    kmeans = KMeans(
-        n_clusters=7,
-        init='k-means++',
-        random_state=0,
-        n_init='auto'
-    ).fit(colors)
-    cluster_centers = kmeans.cluster_centers_
-    labels = kmeans.labels_
-    counts = np.bincount(labels)
-    print(labels)
-    print(list(counts))
-    iterationen = kmeans.n_iter_
-    features = kmeans.n_features_in_
-    distance = kmeans.inertia_
-    print(f'{iterationen} Iterationen, {features} Eingabewerte gesichtet, {distance}')
-    #print(cluster_centers)
-
-
-    for element in cluster_centers:
-        #hsv = HSVColor(
-        #    hsv_h=element[0],
-        #    hsv_s=element[1],
-        #    hsv_v=element[2]
-        #)
-        #srgb: sRGBColor = convert_color(hsv, sRGBColor)
-        #print(srgb.get_upscaled_value_tuple())
-        #srgb = sRGBColor(
-        #    rgb_r=element[0],
-        #    rgb_g=element[1],
-        #    rgb_b=element[2],
-        #    is_upscaled=True
-        #)
-        lab = LabColor(
-            lab_l=element[0],
-            lab_a=element[1],
-            lab_b=element[2]
-        )
-        srgb: sRGBColor = convert_color(lab, sRGBColor)
-        print(srgb.get_upscaled_value_tuple())
-    """
 
     # Color Matching mit Durchschnitt
     """
