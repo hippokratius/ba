@@ -320,6 +320,9 @@ def calc_colors_with_Median(matching: dict, cloud: PyntCloud):
             g_values.append(cloud.points['green'].loc[v])
             b_values.append(cloud.points['blue'].loc[v])
         length = len(r_values)
+        r_values.sort()
+        g_values.sort()
+        b_values.sort()
         if length % 2 != 0:
             r_median = r_values[int(length / 2)]
             g_median = g_values[int(length / 2)]
@@ -359,6 +362,9 @@ def calc_colors_with_Median_HSV(matching: dict,
             h_values.append(hsv.hsv_h)
             s_values.append(hsv.hsv_s)
             v_values.append(hsv.hsv_v)
+        h_values.sort()
+        s_values.sort()
+        v_values.sort()
         length = len(h_values)
         if length % 2 != 0:
             h_median = h_values[int(length / 2)]
@@ -667,7 +673,37 @@ if __name__ == '__main__':
     """
 
     # Color Matching mit BoxPlot RGB
-    color_matching = ca
+    """
+    color_matching = calc_colors_with_boxplot_rgb(
+        matching=matching,
+        cloud=cloud_upscaled
+    )
+    """
+
+    # Color Matching mit BoxPlot HSV
+    """
+    color_matching = calc_colors_with_boxplot_hsv(
+        matching=matching,
+        cloud=cloud_upscaled,
+        is_upscaled=True
+    )
+    """
+
+    # Color Matching mit Median RGB
+    """
+    color_matching = calc_colors_with_Median(
+        matching=matching,
+        cloud=cloud_upscaled
+    )
+    """
+
+    # Color Matching mit Median HSV
+
+    color_matching = calc_colors_with_Median_HSV(
+        matching=matching,
+        cloud=cloud_upscaled,
+        is_upscaled=True
+    )
 
 
     # Color Matching mit RGB kmeans berechnen
