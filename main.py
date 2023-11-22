@@ -1,6 +1,7 @@
 import math
 import pickle
 import time
+import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -105,6 +106,13 @@ def export_pointcloud_as_pickle(
     output.close()
     elapsed_time = time.time() - start
     #print(f'Punktwolke exportiert. {elapsed_time}s.')
+
+
+def export_color_matching(color_matching,
+                          file: str = 'pickleddata/color_matching.pkl'):
+    output = open(file, 'wb')
+    pickle.dump(color_matching, output)
+    output.close()
 
 
 # ------------------------------------------------------------------------------
@@ -399,6 +407,7 @@ def calc_colors_with_kmeans_rgb(matching: dict,
     :return: color matching mit Flächen als Keys und (r, g, b)-Tuple als Values
     """
     color_matching = {}
+    centroids_per_polygon = {}
     for polygon, vertexlist in matching.items():
         colors = cloud.points.get(['red', 'green', 'blue']).loc[vertexlist].values
         if len(colors) >= 5*k:
@@ -414,7 +423,8 @@ def calc_colors_with_kmeans_rgb(matching: dict,
             max_index = counts.index(max(counts))
             maximum = centroids[max_index]
             color_matching[polygon] = (maximum[0], maximum[1], maximum[2])
-    return color_matching
+            centroids_per_polygon[polygon] = centroids
+    return color_matching, centroids_per_polygon
 
 
 def calc_colors_with_kmeans_hsv(matching: dict,
@@ -433,6 +443,7 @@ def calc_colors_with_kmeans_hsv(matching: dict,
     :return: color matching mit Flächen als Keys und (r, g, b)-Tuple als Values
     """
     color_matching = {}
+    centroids_per_polygon = {}
     for polygon, vertexlist in matching.items():
         colors = cloud.points.get(['red', 'green', 'blue']).loc[vertexlist].values
         if len(colors) >= 5*k:
@@ -467,7 +478,8 @@ def calc_colors_with_kmeans_hsv(matching: dict,
                 color_matching[polygon] = srgb.get_upscaled_value_tuple()
             else:
                 color_matching[polygon] = srgb.get_value_tuple()
-    return color_matching
+            centroids_per_polygon[polygon] = centroids
+    return color_matching, centroids_per_polygon
 
 
 # ------------------------------------------------------------------------------
@@ -604,22 +616,30 @@ if __name__ == '__main__':
     # --------------------------------------------------------------------------
 
     # Punktwolke aus Pickle Dateien importieren
+    """
     cloud = import_pointcloud_from_pickle(
         # flasche Koordinaten, richtige Farben als float-Werte
         file='pickleddata/rathaus_float_colors.pkl'
     )
+    """
+    """
     cloud_upscaled = import_pointcloud_from_pickle(
         # richtige Koordinaten, richtige Farben
         file='pickleddata/rathaus_upscaled_colors.pkl'
     )
+    """
+    """
     cloud_las = import_pointcloud_from_pickle(
         # falsche Koordinaten, richtige Farben, nicht als PLY exportierbar (las)
         file='pickleddata/rathaus_las.pkl'
     )
+    """
+    """
     cloud_ply = import_pointcloud_from_pickle(
         # richtige Koordinaten, falsche Farben (zu dunkel)
         file='pickleddata/pointcloud_blender_export.pkl'
     )
+    """
 
     # Punktwolke aus PLY Datei importieren
     """
@@ -698,17 +718,17 @@ if __name__ == '__main__':
     """
 
     # Color Matching mit Median HSV
-
+    """
     color_matching = calc_colors_with_Median_HSV(
         matching=matching,
         cloud=cloud_upscaled,
         is_upscaled=True
     )
-
+    """
 
     # Color Matching mit RGB kmeans berechnen
     """
-    color_matching = calc_colors_with_kmeans_rgb(
+    color_matching, centroids = calc_colors_with_kmeans_rgb(
         matching=matching,
         cloud=cloud_upscaled,
         k=7,
@@ -718,7 +738,7 @@ if __name__ == '__main__':
 
     # Color Matching mit HSV kmeans berechnen
     """
-    color_matching = calc_colors_with_kmeans_hsv(
+    color_matching, centroids = calc_colors_with_kmeans_hsv(
         matching=matching,
         cloud=cloud_upscaled,
         k=7,
@@ -727,8 +747,10 @@ if __name__ == '__main__':
     )
     """
 
+
     # Berechnung und Ausgabe der Farbdifferenz für die Referenzflächen für eine
     # Auswertung
+    """
     print('FlächenID: Referenzfarbe; Farbdifferenz Delta E; Berechnete Farbe ')
     for polygon, color in references.items():
         (r, g, b) = color_matching[polygon]
@@ -741,14 +763,22 @@ if __name__ == '__main__':
         srgb = sRGBColor(r, g, b, True)
         print(srgb.rgb_r, srgb.rgb_g, srgb.rgb_b)
         print('   ')
-
-
-    # Color Matching mit Durchschnitt
     """
-    color_matching = calc_colors_with_average(
-        matching=matching,
-        cloud=cloud_upscaled
-    )
+
+    # Centroide Auswerten
+    """
+    distanzen = {}
+    for polygon, color in references.items():
+        d = []
+        for c in centroids[polygon]:
+            delta_e = validate_colors(
+                color1=(c[0], c[1], c[2]),
+                color2=color,
+                is_upscaled=True
+            )
+            d.append(delta_e)
+        distanzen[polygon] = d
+    print(distanzen)
     """
 
     # RGB-Histogramm pro Fläche erzeugen
@@ -891,4 +921,7 @@ if __name__ == '__main__':
         file='diagrams/hsl.png'
     )
     """
+
+    # color Matching exportieren
+    #export_color_matching(color_matching=color_matching)
 

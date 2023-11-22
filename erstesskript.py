@@ -427,10 +427,11 @@ print("Object Mode gesetzt.")
 
 # Matching von Flächen und Punkten berechnen
 print("Berechne Matching...")
-#m = fastPointSurfaceMatching(pcMesh=pcMesh, obj=rathaus, dist=factor)
+m = fastPointSurfaceMatching(pcMesh=pcMesh, obj=rathaus, dist=factor)
 #m = multiprocessingMatching(pcMesh=pcMesh, obj=rathaus, dist=factor)
 
-printSelectedFaceID(rathausMesh)
+# Ausgeben der FlächenID von ausgewählten Flächen
+#printSelectedFaceID(rathausMesh)
 
 # -----------------------------------------------------------------------------------
 # Färbungsverfahren
@@ -472,3 +473,23 @@ printSelectedFaceID(rathausMesh)
 #    pickle.dump(m, output)
 #Datei schließen
 #output.close()
+C
+
+# -----------------------------------------------------------------------------------
+# Flächen mit Color Matching färben
+# -----------------------------------------------------------------------------------
+"""
+picklefile = open('pickleddata/color_matching.pkl', 'rb')
+color_matching = pickle.load(picklefile)
+picklefile.close()
+for polygon, color in color_matching.items():
+    (r, g, b) = color
+    setColor(
+        objMesh=rathausMesh,
+        p_index=polygon,
+        r=r,
+        g=g,
+        b=b,
+        a=1
+    )
+"""

@@ -30,3 +30,23 @@ Für die Python Dateien wurden folgende Bibliotheken verwendet (siehe `requireme
 sich an diese Dateien beim ersten Ausführen einmal zu 'picklen' und als `.pkl` Datei in den Ordner `pickleddata` zu 
 speichern. Entsprechende Funktionen sind in der `main.py` zu finden.
 
+1. Zu Beginn muss ein neues Blender Projekt erstellt werden. Im neuen Projekt muss nun die Datei 
+   `rathaus_upscaled_colors.ply` über den experimentellen Stanford PLY Import. Als nächstes sollte die 
+   CityJSON-Datei `rathaus_mit_semantischen_flaechen.json` in Blender importiert werden (`CityJSONEditor` muss 
+   installiert sein, im Import Dialog Häkchen für Texturimport entfernen). Sollte die Punktwolke nicht passend zum 
+   CityJSON Objekt ausgerichtet sein, 
+   muss folgende 
+   Werte 
+   für die Punktwolke gesetzt werden. Location: X=-25,06 Y=-63,25 Z=1,58; Rotation: Z=-86,27. Die Werte müssen über 
+   `Òbject > Apply > All Transforms` gespeichert werden.
+2. Als nächstes muss das Python Skript `erstesskript.py` über den Scripting Bereich von Blender geöffnet werden. Im 
+   Skript sollten die Objekt-Bezeichnungen der Importierten Objekte überprüft werden (Variable `pc` und `rathaus`). 
+   Danach kann durch ausführen des Skripts ein Matching erzeugt werden. Um das Matching mittels `pickle` zu speichern, 
+   müssen die entsprechenden Zeile zum Ende des Skripts auskommentiert werden.
+3. Das Python Skript `main.py` in einer IDE öffnen. Zielen zum Importieren der Punktwolke zu Beginn des Abschnittes 
+   'Hauptprogramm' auskommentieren (entweder für `.ply` oder `pkl`). Danach den gewünschten Funktionsaufruf für 
+   einen Farbberechnungsmethode auskommentieren und das Skript ausführen. Um das `color_matching` auszuwerten, unter 
+   den Methoden den entsprechenden Teil auskommentieren. Zum Exportieren des `color_matching` die entsprechenden 
+   Zeilen zum Ende des Skripts auskommentieren.
+4. Um die Flächen des CityJSON Objektes zu färben müssen die entsprechenden Zeilen am Ende von `erstesskript.py` 
+   exportiert werden. Danach das Skript in Blender ausführen.
